@@ -2,11 +2,12 @@ $check_interval_milliseconds = 500
 
 $default_gw = (Get-NetRoute |
     Where-Object { $_.DestinationPrefix -eq "0.0.0.0/0" } |
+    Sort-Object RouteMetric |
     Select-Object -First 1 -ExpandProperty NextHop)
 
 if (-not $default_gw) {
     Write-Host "Error: Could not auto-detect default gateway." -ForegroundColor Red
-    exit
+    exit 1
 }
 
 $known_mac = $null
@@ -46,10 +47,18 @@ while ($true) {
         Write-Host "[Attempt: $attempt] No ARP entry for $default_gw yet..." -ForegroundColor Yellow
     }
     elseif ($current_mac -ne $known_mac) {
-        Write-Host "`n!!! GATEWAY MAC CHANGED !!!" -ForegroundColor Red -BackgroundColor Black
-        Write-Host "Old (baseline): $known_mac"
-        Write-Host "New (current) : $current_mac"
+        Clear-Host
+        Write-Host "`n!!! GATEWAY MAC CHANGED - POSSIBLE ROGUE GATEWAY !!!" -ForegroundColor Red -BackgroundColor Black
+        Write-Host ""
+        Write-Host "Default gateway: $default_gw"
+        Write-Host "Old baseline MAC: $known_mac"
+        Write-Host "New current MAC : $current_mac"
         Write-Host "Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+        Write-Host ""
+
+        [console]::beep(1000, 700)
+
+        break
     }
     else {
         Write-Host "[Attempt: $attempt] OK (Current MAC: $current_mac)" -ForegroundColor DarkGray
